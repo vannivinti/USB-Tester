@@ -28,6 +28,8 @@ namespace USB_Tester
         string testDriveLetter;
         int testFileSize;
         int testIterations;
+        Thread testThread;
+       
 
         #region DELEGATES
         private delegate void UpdateTextBox(string message);
@@ -37,7 +39,7 @@ namespace USB_Tester
         {
             InitializeComponent();
 
-            this.Text = "USB Perfomance Analyzer v1.0";
+            this.Text = "USB Perfomance Analyzer v1.1";
             this.Size = new Size(600, 350);
             driveLabel.Location = new Point(5, 8);
             driveLabel.Text = "Device drive letter";
@@ -138,7 +140,7 @@ namespace USB_Tester
                         testIterations = -1;
                     }
 
-                    Thread testThread = new Thread(new ParameterizedThreadStart(TestPerf));
+                    testThread = new Thread(new ParameterizedThreadStart(TestPerf));
                     testThread.Start(testDriveLetter);
                 }
                
@@ -165,8 +167,7 @@ namespace USB_Tester
                 DateTime stopTime;
                 string randomText = RandomString(100000);
 
-                while(true)
-                //for (int j = 1; j <= testIterations; j++)
+                while (true)
                 {
                     j++;
                     if ( (j>testIterations) && (testIterations!= -1) )
@@ -187,6 +188,14 @@ namespace USB_Tester
                     }
 
                     sWriter.Close();
+
+                    //check if the file already exist in the removable disk  and eventualy remove it 
+                    if (File.Exists(letter + "\\" + j + filenameappend + "test.tmp"))
+                    {
+                        File.Delete(letter + "\\" + j + filenameappend + "test.tmp");
+                    }
+
+
                     startTime = DateTime.Now;
                     File.Copy(System.Environment.CurrentDirectory + "\\" + j + filenameappend + "test.tmp", letter + "\\" + j + filenameappend + "test.tmp");
                     stopTime = DateTime.Now;
@@ -228,6 +237,15 @@ namespace USB_Tester
                 builder.Append(ch);
             }
             return builder.ToString();
+        }
+
+        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if(testThread != null)
+            {
+                testThread.Abort();
+                testThread.Join();
+            }
         }
     }
 }
