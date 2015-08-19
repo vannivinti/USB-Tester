@@ -20,6 +20,7 @@ namespace USB_Tester
         Label fileSizeLabel = new Label();
         Label loopsLabel = new Label();
         Button benchmarkButton = new Button();
+        Button stopButton = new Button();
         CheckBoxComboBox driveLetter = new CheckBoxComboBox();
         ComboBox fileSize = new ComboBox();
         ComboBox loops = new ComboBox();
@@ -28,7 +29,8 @@ namespace USB_Tester
         string testDriveLetter;
         int testFileSize;
         int testIterations;
-        Thread testThread;
+        List<Thread> threadList;
+        //Thread testThread;
        
 
         #region DELEGATES
@@ -39,7 +41,9 @@ namespace USB_Tester
         {
             InitializeComponent();
 
-            this.Text = "USB Perfomance Analyzer v1.1";
+            threadList = new List<Thread>();
+
+            this.Text = "USB Perfomance Analyzer v2.0";
             this.Size = new Size(600, 350);
             driveLabel.Location = new Point(5, 8);
             driveLabel.Text = "Device drive letter";
@@ -57,7 +61,9 @@ namespace USB_Tester
             fileSize.Location = new Point(213, 5);
             fileSize.Size = new Size(49, 15);
             fileSize.Items.AddRange(new object[]
-              {"100",
+              {"1",
+               "10",
+               "100",
                "200",
                "400",
                "800",
@@ -84,6 +90,10 @@ namespace USB_Tester
             benchmarkButton.Location = new Point(449, 5);
             benchmarkButton.Size = new Size(50, 20);
             benchmarkButton.Text = "Start";
+            stopButton.Location = new Point(509, 5);
+            stopButton.Size = new Size(50, 20);
+            stopButton.Text = "Close";
+
             resultArea.Location = new Point(5, 30);
             resultArea.Size = new Size(575, 278);
             resultArea.ReadOnly = true;
@@ -98,8 +108,15 @@ namespace USB_Tester
             this.Controls.Add(loopsLabel);
             this.Controls.Add(loops);
             this.Controls.Add(benchmarkButton);
+            this.Controls.Add(stopButton);
             this.Controls.Add(resultArea);
             benchmarkButton.Click += new EventHandler(benchmarkButton_Click);
+            stopButton.Click += new EventHandler(stopButton_Click);
+
+            for (int i = 0; i < driveLetter.Items.Count; i++)
+            {
+                driveLetter.CheckBoxItems[i].Checked = true;
+            }
         }
 
         private void OnUpdateTextBox(string message)
@@ -140,12 +157,21 @@ namespace USB_Tester
                         testIterations = -1;
                     }
 
-                    testThread = new Thread(new ParameterizedThreadStart(TestPerf));
-                    testThread.Start(testDriveLetter);
+                    threadList.Add(new Thread(new ParameterizedThreadStart(TestPerf)));
+                    threadList[i].Start(testDriveLetter);
                 }
-               
             }
-            
+        }
+
+        private void stopButton_Click(object sender, EventArgs e)
+        {
+            foreach (Thread thread in threadList)
+            {
+                thread.Abort();
+                thread.Join();
+            }
+
+            threadList.Clear();
         }
 
         private void TestPerf(object obj)
@@ -161,6 +187,7 @@ namespace USB_Tester
 
                 message = "Running a " + testFileSize / 1000000 + "MB file write on drive " + letter + " " + testIterations + " times...\r\n";
                 BeginInvoke(new UpdateTextBox(OnUpdateTextBox), new object[] { message });
+                Logger.Info(message, "TestPerf");
 
                 double totalPerf = 0;
                 DateTime startTime;
@@ -204,8 +231,10 @@ namespace USB_Tester
                     TimeSpan interval = stopTime - startTime;
 
                     message = letter+"Iteration "   + j + ":   " + Math.Round((testFileSize / 1000) / interval.TotalMilliseconds, 2) +" MB/sec\r\n";
-                    BeginInvoke(new UpdateTextBox(OnUpdateTextBox), new object[] { message });
                     totalPerf += (testFileSize / 1000) / interval.TotalMilliseconds;
+
+                    BeginInvoke(new UpdateTextBox(OnUpdateTextBox), new object[] { message });
+                    Logger.Info(message, "TestPerf");
                 }
 
                 if (testIterations != -1)
@@ -214,6 +243,7 @@ namespace USB_Tester
                     message += letter + "Average:      " + Math.Round(totalPerf / testIterations, 2) + " MB/sec\r\n";
                     message += "------------------------------\r\n";
                     BeginInvoke(new UpdateTextBox(OnUpdateTextBox), new object[] { message });
+                    Logger.Info("\r\n" + message, "TestPerf");
                 }
                 
                 //resultArea.Invalidate();
@@ -222,6 +252,7 @@ namespace USB_Tester
             {
                 message = letter+"An error occured: " + e.Message + "\r\n";
                 BeginInvoke(new UpdateTextBox(OnUpdateTextBox), new object[] { message });
+                Logger.Error(e, "TestPerf");
                 //resultArea.AppendText("An error occured: " + e.Message + "\r\n");
             }
         }
@@ -241,11 +272,9 @@ namespace USB_Tester
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if(testThread != null)
-            {
-                testThread.Abort();
-                testThread.Join();
-            }
+            stopButton_Click(null, null);
+
+            Logger.Info("Application closed.\n\r\n\r\n\r\n\r", "Form1_FormClosing");
         }
     }
 }
