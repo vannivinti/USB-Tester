@@ -69,7 +69,7 @@ namespace USB_Tester
                "800",
                "1000",
                "2000"});
-            fileSize.SelectedIndex = 1;
+            fileSize.SelectedIndex = 0;
             loopsLabel.Location = new Point(288, 8);
             loopsLabel.Text = "Loops";
             loopsLabel.Size = new Size(46, 20);
@@ -86,7 +86,7 @@ namespace USB_Tester
                "40",
                "INFINITE"});
 
-            loops.SelectedIndex = 4;
+            loops.SelectedIndex = 8;
             benchmarkButton.Location = new Point(449, 5);
             benchmarkButton.Size = new Size(50, 20);
             benchmarkButton.Text = "Start";
@@ -142,6 +142,8 @@ namespace USB_Tester
 
         private void benchmarkButton_Click(object sender, EventArgs e)
         {
+            threadList.Clear();
+
             for (int i = 0; i < driveLetter.Items.Count; i++)
             {
                 if(driveLetter.CheckBoxItems[i].Checked == true)
